@@ -1,4 +1,158 @@
 
+import SwiftUI
+
+class Student: Identifiable {
+    var id: String
+    var name: String
+    var age: Int
+
+    init(id: String, name: String, age: Int) {
+        self.id = id
+        self.name = name
+        self.age = age
+    }
+
+    func displayInfo() -> String {
+        "\(id) - \(name), Age: \(age)"
+    }
+}
+
+class Subject: Identifiable {
+    var id: String
+    var name: String
+    var credits: Int
+
+    init(id: String, name: String, credits: Int) {
+        self.id = id
+        self.name = name
+        self.credits = credits
+    }
+}
+
+class StudentRecord: Identifiable {
+    let id = UUID()
+    var student: Student
+    var subject: Subject
+    private(set) var mark: Double
+    var year: Int
+
+    init?(student: Student, subject: Subject, mark: Double, year: Int) {
+        guard (0...10).contains(mark) else { return nil }
+        self.student = student
+        self.subject = subject
+        self.mark = mark
+        self.year = year
+    }
+
+    func updateMark(_ value: Double) -> Bool {
+        guard (0...10).contains(value) else { return false }
+        mark = value
+        return true
+    }
+
+    func isPassed() -> Bool {
+        mark >= 5
+    }
+}
+
+func average(_ student: Student, _ records: [StudentRecord]) -> Double? {
+    let list = records.filter { $0.student.id == student.id }
+    let credits = list.reduce(0) { $0 + $1.subject.credits }
+
+    guard credits > 0 else { return nil }
+
+    return list.reduce(0.0) {
+        $0 + $1.mark * Double($1.subject.credits)
+    } / Double(credits)
+}
+
+func ranking(_ mark: Double?) -> String {
+    guard let mark = mark else { return "No results" }
+
+    switch mark {
+    case 8.5...10: return "Excellent"
+    case 7..<8.5: return "Good"
+    case 5..<7: return "Average"
+    default: return "Fail"
+    }
+}
+
+class University: ObservableObject {
+    @Published var students: [Student] = []
+    @Published var subjects: [Subject] = []
+    @Published var records: [StudentRecord] = []
+    @Published var message = ""
+
+    init() {
+        let a = Student(id: "S01", name: "An", age: 19)
+        let b = Student(id: "S02", name: "Binh", age: 20)
+        let c = Student(id: "S03", name: "Chi", age: 19)
+        let d = Student(id: "S04", name: "Dung", age: 21)
+
+        students = [a, b, c, d]
+
+        let s1 = Subject(id: "C01", name: "Swift", credits: 3)
+        let s2 = Subject(id: "C02", name: "Math", credits: 4)
+        let s3 = Subject(id: "C03", name: "Physics", credits: 3)
+        let s4 = Subject(id: "C04", name: "English", credits: 2)
+
+        subjects = [s1, s2, s3, s4]
+
+        records = [
+            StudentRecord(student: a, subject: s1, mark: 9, year: 2026)!,
+            StudentRecord(student: a, subject: s2, mark: 8, year: 2026)!,
+            StudentRecord(student: a, subject: s3, mark: 7.5, year: 2026)!,
+            StudentRecord(student: b, subject: s1, mark: 6.5, year: 2026)!,
+            StudentRecord(student: b, subject: s4, mark: 8, year: 2026)!,
+            StudentRecord(student: c, subject: s2, mark: 9.5, year: 2026)!,
+            StudentRecord(student: c, subject: s3, mark: 8.5, year: 2026)!,
+            StudentRecord(student: d, subject: s4, mark: 4, year: 2026)!
+        ]
+    }
+
+    func register(
+        _ student: Student,
+        _ subject: Subject,
+        _ mark: Double,
+        _ year: Int
+    ) -> Bool {
+        let exists = records.contains {
+            $0.student.id == student.id &&
+            $0.subject.id == subject.id &&
+            $0.year == year
+        }
+
+        guard !exists else {
+            message = "Subject already registered."
+            return false
+        }
+
+        guard let record = StudentRecord(
+            student: student,
+            subject: subject,
+            mark: mark,
+            year: year
+        ) else {
+            message = "Mark must be 0–10."
+            return false
+        }
+
+        records.append(record)
+        message = "Registration successful."
+        return true
+    }
+
+    func update(_ record: StudentRecord, _ mark: Double) {
+        guard record.updateMark(mark) else {
+            message = "Mark must be 0–10."
+            return
+        }
+
+        records = records
+        message = "Mark updated."
+    }
+}
+
 struct ContentView: View {
     @StateObject var data = University()
     @State var selected: Student?
@@ -22,12 +176,16 @@ struct ContentView: View {
                                     .foregroundStyle(.primary)
 
                                 let avg = average(student, data.records)
+                                let avgText = avg == nil
+                                    ? "N/A"
+                                    : String(format: "%.2f", avg!)
 
-                                Text("Average: \(avg.map { String(format: "%.2f", $0) } ?? "N/A") • \(ranking(avg))")
+                                Text("Average: \(avgText) • \(ranking(avg))")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
 
