@@ -1,3 +1,4 @@
+
 import SwiftUI
 
 class Student: Identifiable {
@@ -11,26 +12,8 @@ class Student: Identifiable {
         self.age = age
     }
 
-    func getName() -> String {
-        return name
-    }
-
-    func setName(_ newName: String) {
-        name = newName
-    }
-
-    func getAge() -> Int {
-        return age
-    }
-
-    func setAge(_ newAge: Int) {
-        if newAge > 0 {
-            age = newAge
-        }
-    }
-
     func displayInfo() -> String {
-        return "ID: \(id) | Name: \(name) | Age: \(age)"
+        "\(id) - \(name), Age: \(age)"
     }
 }
 
@@ -44,20 +27,6 @@ class Subject: Identifiable {
         self.name = name
         self.credits = credits
     }
-
-    func getCredits() -> Int {
-        return credits
-    }
-
-    func setCredits(_ newCredits: Int) {
-        if newCredits > 0 {
-            credits = newCredits
-        }
-    }
-
-    func displayInfo() -> String {
-        return "\(name) (\(credits) credits)"
-    }
 }
 
 class StudentRecord: Identifiable {
@@ -65,144 +34,88 @@ class StudentRecord: Identifiable {
     var student: Student
     var subject: Subject
     private(set) var mark: Double
-    var academicYear: Int
+    var year: Int
 
-    init?(
-        student: Student,
-        subject: Subject,
-        mark: Double,
-        academicYear: Int
-    ) {
-        guard (0.0...10.0).contains(mark) else {
-            return nil
-        }
-
+    init?(student: Student, subject: Subject, mark: Double, year: Int) {
+        guard (0...10).contains(mark) else { return nil }
         self.student = student
         self.subject = subject
         self.mark = mark
-        self.academicYear = academicYear
+        self.year = year
     }
 
-    @discardableResult
-    func updateMark(_ newMark: Double) -> Bool {
-        guard (0.0...10.0).contains(newMark) else {
-            return false
-        }
-
-        mark = newMark
+    func updateMark(_ value: Double) -> Bool {
+        guard (0...10).contains(value) else { return false }
+        mark = value
         return true
     }
 
-    func isPassed() -> Bool {
-        return mark >= 5.0
-    }
+    func isPassed() -> Bool { mark >= 5 }
 }
 
-func averageMark(
-    for student: Student,
-    records: [StudentRecord]
-) -> Double? {
-    let studentRecords = records.filter {
-        $0.student.id == student.id
-    }
-
-    guard !studentRecords.isEmpty else {
-        return nil
-    }
-
-    let totalCredits = studentRecords.reduce(0) {
-        $0 + $1.subject.credits
-    }
-
-    guard totalCredits > 0 else {
-        return nil
-    }
-
-    let weightedTotal = studentRecords.reduce(0.0) {
+func average(_ student: Student, _ records: [StudentRecord]) -> Double? {
+    let list = records.filter { $0.student.id == student.id }
+    let credits = list.reduce(0) { $0 + $1.subject.credits }
+    guard credits > 0 else { return nil }
+    return list.reduce(0.0) {
         $0 + $1.mark * Double($1.subject.credits)
-    }
-
-    return weightedTotal / Double(totalCredits)
+    } / Double(credits)
 }
 
-func academicRanking(for average: Double?) -> String {
-    guard let average = average else {
-        return "No results"
-    }
-
-    switch average {
-    case 8.5...10.0:
-        return "Excellent"
-    case 7.0..<8.5:
-        return "Good"
-    case 5.0..<7.0:
-        return "Average"
-    default:
-        return "Fail"
+func ranking(_ mark: Double?) -> String {
+    guard let mark else { return "No results" }
+    switch mark {
+    case 8.5...10: return "Excellent"
+    case 7..<8.5: return "Good"
+    case 5..<7: return "Average"
+    default: return "Fail"
     }
 }
 
-class UniversityViewModel: ObservableObject {
+class University: ObservableObject {
     @Published var students: [Student] = []
     @Published var subjects: [Subject] = []
     @Published var records: [StudentRecord] = []
     @Published var message = ""
 
     init() {
-        loadSampleData()
-    }
+        let a = Student(id: "S01", name: "An", age: 19)
+        let b = Student(id: "S02", name: "Binh", age: 20)
+        let c = Student(id: "S03", name: "Chi", age: 19)
+        let d = Student(id: "S04", name: "Dung", age: 21)
+        students = [a, b, c, d]
 
-    func loadSampleData() {
-        let s1 = Student(id: "S001", name: "An", age: 19)
-        let s2 = Student(id: "S002", name: "Binh", age: 20)
-        let s3 = Student(id: "S003", name: "Chi", age: 19)
-        let s4 = Student(id: "S004", name: "Dung", age: 21)
-
-        students = [s1, s2, s3, s4]
-
-        let sub1 = Subject(id: "C001", name: "Swift", credits: 3)
-        let sub2 = Subject(id: "C002", name: "Mathematics", credits: 4)
-        let sub3 = Subject(id: "C003", name: "Physics", credits: 3)
-        let sub4 = Subject(id: "C004", name: "English", credits: 2)
-
-        subjects = [sub1, sub2, sub3, sub4]
+        let s1 = Subject(id: "C01", name: "Swift", credits: 3)
+        let s2 = Subject(id: "C02", name: "Math", credits: 4)
+        let s3 = Subject(id: "C03", name: "Physics", credits: 3)
+        let s4 = Subject(id: "C04", name: "English", credits: 2)
+        subjects = [s1, s2, s3, s4]
 
         records = [
-            StudentRecord(student: s1, subject: sub1, mark: 9.0, academicYear: 2026)!,
-            StudentRecord(student: s1, subject: sub2, mark: 8.0, academicYear: 2026)!,
-            StudentRecord(student: s1, subject: sub3, mark: 7.5, academicYear: 2026)!,
-            StudentRecord(student: s2, subject: sub1, mark: 6.5, academicYear: 2026)!,
-            StudentRecord(student: s2, subject: sub4, mark: 8.0, academicYear: 2026)!,
-            StudentRecord(student: s3, subject: sub2, mark: 9.5, academicYear: 2026)!,
-            StudentRecord(student: s3, subject: sub3, mark: 8.5, academicYear: 2026)!,
-            StudentRecord(student: s4, subject: sub4, mark: 4.0, academicYear: 2026)!
+            StudentRecord(student: a, subject: s1, mark: 9, year: 2026)!,
+            StudentRecord(student: a, subject: s2, mark: 8, year: 2026)!,
+            StudentRecord(student: a, subject: s3, mark: 7.5, year: 2026)!,
+            StudentRecord(student: b, subject: s1, mark: 6.5, year: 2026)!,
+            StudentRecord(student: b, subject: s4, mark: 8, year: 2026)!,
+            StudentRecord(student: c, subject: s2, mark: 9.5, year: 2026)!,
+            StudentRecord(student: c, subject: s3, mark: 8.5, year: 2026)!,
+            StudentRecord(student: d, subject: s4, mark: 4, year: 2026)!
         ]
     }
 
-    func register(
-        student: Student,
-        subject: Subject,
-        mark: Double,
-        academicYear: Int
-    ) -> Bool {
-        let alreadyRegistered = records.contains {
+    func register(_ student: Student, _ subject: Subject, _ mark: Double, _ year: Int) -> Bool {
+        guard !records.contains(where: {
             $0.student.id == student.id &&
-            $0.subject.id == subject.id &&
-            $0.academicYear == academicYear
-        }
-
-        guard !alreadyRegistered else {
-            message = "This student has already registered for this subject in that academic year."
+            $0.subject.id == subject.id && $0.year == year
+        }) else {
+            message = "Subject already registered."
             return false
         }
 
         guard let record = StudentRecord(
-            student: student,
-            subject: subject,
-            mark: mark,
-            academicYear: academicYear
+            student: student, subject: subject, mark: mark, year: year
         ) else {
-            message = "Mark must be between 0 and 10."
+            message = "Mark must be 0–10."
             return false
         }
 
@@ -211,204 +124,107 @@ class UniversityViewModel: ObservableObject {
         return true
     }
 
-    func updateMark(for record: StudentRecord, mark: Double) {
+    func update(_ record: StudentRecord, _ mark: Double) {
         guard record.updateMark(mark) else {
-            message = "Mark must be between 0 and 10."
+            message = "Mark must be 0–10."
             return
         }
-
         records = records
-        message = "Mark updated successfully."
-    }
-
-    func average(for student: Student) -> Double? {
-        averageMark(for: student, records: records)
-    }
-
-    func ranking(for student: Student) -> String {
-        academicRanking(for: average(for: student))
-    }
-
-    func rankPosition(for student: Student) -> Int? {
-        guard let studentAverage = average(for: student) else {
-            return nil
-        }
-
-        let averages = students.compactMap {
-            average(for: $0)
-        }
-
-        return 1 + averages.filter {
-            $0 > studentAverage
-        }.count
-    }
-
-    func records(for student: Student) -> [StudentRecord] {
-        records.filter {
-            $0.student.id == student.id
-        }
+        message = "Mark updated."
     }
 }
 
 struct ContentView: View {
-    @StateObject private var viewModel = UniversityViewModel()
-    @State private var selectedStudent: Student?
-    @State private var editingRecord: StudentRecord?
-    @State private var markInput = ""
-    @State private var showingEditSheet = false
+    @StateObject var data = University()
+    @State var selected: Student?
+    @State var editing: StudentRecord?
+    @State var input = ""
+    @State var showEdit = false
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Academic Ranking") {
-                    ForEach(
-                        viewModel.students.sorted {
-                            (viewModel.average(for: $0) ?? -1) >
-                            (viewModel.average(for: $1) ?? -1)
-                        }
-                    ) { student in
+                Section("Student Ranking") {
+                    ForEach(data.students.sorted {
+                        (average($0, data.records) ?? -1) >
+                        (average($1, data.records) ?? -1)
+                    }) { student in
                         Button {
-                            selectedStudent = student
+                            selected = student
                         } label: {
-                            VStack(alignment: .leading, spacing: 5) {
+                            VStack(alignment: .leading) {
                                 Text(student.displayInfo())
-                                    .font(.headline)
                                     .foregroundStyle(.primary)
-
-                                HStack {
-                                    Text(
-                                        "Average: " +
-                                        (viewModel.average(for: student)
-                                            .map { String(format: "%.2f", $0) }
-                                            ?? "N/A")
-                                    )
-
-                                    Spacer()
-
-                                    Text(viewModel.ranking(for: student))
-                                        .fontWeight(.semibold)
-                                }
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-
-                                if let rank = viewModel.rankPosition(for: student) {
-                                    Text("Rank: #\(rank)")
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                }
+                                let avg = average(student, data.records)
+                                Text("Average: \(avg.map { String(format: "%.2f", $0) ?? "N/A") ?? "N/A") • \(ranking(avg))")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                             }
-                            .padding(.vertical, 4)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
 
-                if let student = selectedStudent {
-                    Section("\(student.name)'s Course Results") {
-                        ForEach(viewModel.records(for: student)) { record in
+                if let student = selected {
+                    Section("\(student.name)'s Results") {
+                        ForEach(data.records.filter {
+                            $0.student.id == student.id
+                        }) { record in
                             HStack {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading) {
                                     Text(record.subject.name)
-                                        .fontWeight(.medium)
-
-                                    Text(
-                                        "\(record.subject.credits) credits • " +
-                                        "Year \(record.academicYear)"
-                                    )
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                    Text(
-                                        record.isPassed() ? "Passed" : "Failed"
-                                    )
-                                    .font(.caption)
-                                    .foregroundStyle(
-                                        record.isPassed() ? .green : .red
-                                    )
+                                    Text(record.isPassed() ? "Passed" : "Failed")
+                                        .font(.caption)
+                                        .foregroundStyle(record.isPassed() ? .green : .red)
                                 }
-
                                 Spacer()
-
-                                VStack(alignment: .trailing, spacing: 6) {
+                                VStack(alignment: .trailing) {
                                     Text(String(format: "%.1f", record.mark))
-                                        .font(.title3)
-                                        .fontWeight(.bold)
-
-                                    Button("Edit Mark") {
-                                        editingRecord = record
-                                        markInput = String(record.mark)
-                                        showingEditSheet = true
+                                    Button("Edit") {
+                                        editing = record
+                                        input = String(record.mark)
+                                        showEdit = true
                                     }
                                     .font(.caption)
                                 }
                             }
-                            .padding(.vertical, 4)
                         }
                     }
                 }
 
-                Section("All Subjects") {
-                    ForEach(viewModel.subjects) { subject in
-                        HStack {
-                            Text(subject.name)
-                            Spacer()
-                            Text("\(subject.credits) credits")
-                                .foregroundStyle(.secondary)
-                        }
+                Section("Subjects") {
+                    ForEach(data.subjects) {
+                        Text("\($0.name) - \($0.credits) credits")
                     }
                 }
 
-                if !viewModel.message.isEmpty {
+                if !data.message.isEmpty {
                     Section("Status") {
-                        Text(viewModel.message)
-                            .font(.subheadline)
+                        Text(data.message)
                     }
                 }
             }
             .navigationTitle("Student Manager")
-            .sheet(isPresented: $showingEditSheet) {
-                editMarkSheet
-            }
-        }
-    }
-
-    private var editMarkSheet: some View {
-        NavigationStack {
-            Form {
-                if let record = editingRecord {
-                    Section("Student and Subject") {
-                        Text(record.student.name)
-                        Text(record.subject.name)
-                    }
-
-                    Section("New Mark (0–10)") {
-                        TextField("Enter mark", text: $markInput)
+            .sheet(isPresented: $showEdit) {
+                NavigationStack {
+                    Form {
+                        TextField("Mark (0–10)", text: $input)
                             .keyboardType(.decimalPad)
                     }
-                }
-            }
-            .navigationTitle("Update Mark")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showingEditSheet = false
-                    }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let normalizedInput = markInput.replacingOccurrences(
-                            of: ",",
-                            with: "."
-                        )
-
-                        if let mark = Double(normalizedInput),
-                           let record = editingRecord {
-                            viewModel.updateMark(for: record, mark: mark)
-                            showingEditSheet = false
-                        } else {
-                            viewModel.message =
-                                "Enter a valid number between 0 and 10."
+                    .navigationTitle("Edit Mark")
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Save") {
+                                let value = input.replacingOccurrences(of: ",", with: ".")
+                                if let mark = Double(value), let record = editing {
+                                    data.update(record, mark)
+                                    showEdit = false
+                                } else {
+                                    data.message = "Invalid mark."
+                                }
+                            }
+                        }
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showEdit = false }
                         }
                     }
                 }
